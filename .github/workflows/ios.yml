@@ -1,0 +1,47 @@
+name: iOS (imzasız .ipa)
+
+# Elle başlatılır: GitHub > Actions > "iOS (imzasız .ipa)" > Run workflow.
+# Çıktı: "ozelkalem-ios" adlı artifact içinde imzasız .ipa. Sideloadly / AltStore, ücretsiz Apple kimliğinizle imzalayıp telefona kurar.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  ios:
+    runs-on: macos-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Bağımlılıklar
+        run: flutter pub get
+
+      - name: Çözümleme
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+
+      - name: Testler
+        run: flutter test
+
+      - name: iOS derle (imzasız)
+        run: flutter build ios --release --no-codesign
+
+      - name: .ipa paketle
+        run: |
+          mkdir -p ipa/Payload
+          cp -R build/ios/iphoneos/Runner.app ipa/Payload/
+          cd ipa
+          zip -qr ../ozelkalem.ipa Payload
+          cd ..
+          ls -la ozelkalem.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ozelkalem-ios
+          path: ozelkalem.ipa
+          retention-days: 30
